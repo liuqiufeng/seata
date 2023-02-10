@@ -617,6 +617,22 @@ public class EnhancedServiceLoader {
 
         private ExtensionDefinition<S> getCachedExtensionDefinition(String activateName) {
             List<ExtensionDefinition<S>> definitions = nameToDefinitionsMap.get(activateName);
+            if (CollectionUtils.isEmpty(definitions)) {
+                // definition may be unloaded, try reload.
+                List<ExtensionDefinition<S>> currentDefinitions = definitionsHolder.get();
+                definitions = currentDefinitions.stream()
+                        .filter(definition -> StringUtils.equals(definition.getName(), activateName))
+                        .collect(Collectors.toList());
+                ExtensionDefinition<S> definition = CollectionUtils.getLast(definitions);
+                if (definition == null) {
+                    return null;
+                }
+                // reload success, add to classToDefinitionMap and nameToDefinitionsMap
+                classToDefinitionMap.put(definition.getServiceClass(), definition);
+                CollectionUtils.computeIfAbsent(nameToDefinitionsMap, activateName, e -> new ArrayList<>())
+                        .add(definition);
+                return definition;
+            }
             return CollectionUtils.getLast(definitions);
         }
 
